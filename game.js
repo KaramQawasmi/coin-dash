@@ -6,6 +6,7 @@ class CoinDash extends Phaser.Scene {
     const c = COIN_DASH;
     this.score = 0;
     this.finished = false;
+    this.power = null;
     this.paused = false;
     this.time.paused = false;
     this.deadline = this.time.now + c.roundSeconds * 1000;
@@ -22,16 +23,13 @@ class CoinDash extends Phaser.Scene {
     this.placeCoin();
     this.drones = this.physics.add.group();
     for (let i = 0; i < c.droneCount; i++) {
-      const drone = this.add.rectangle(90 + i * 270, 100, 26, 26, c.colors.drone);
-      this.drones.add(drone);
-      drone.body.setCollideWorldBounds(true).setBounce(1, 1);
-      const angle = (35 + i * 105) * Math.PI / 180;
-      drone.body.setVelocity(Math.cos(angle) * c.droneSpeed, Math.sin(angle) * c.droneSpeed);
+      this.spawnDrone(90 + i * 270, 100, 35 + i * 105);
     }
     this.physics.add.overlap(this.player, this.coin, () => {
       if (this.finished) return;
       this.score++;
       this.playTone(988, 1976, 0.15, 'square');
+      if (this.score % 10 === 0) this.spawnDrone();
       this.placeCoin();
     });
     this.physics.add.overlap(this.player, this.drones, () => {
@@ -136,6 +134,22 @@ class CoinDash extends Phaser.Scene {
     osc.connect(gain).connect(ctx.destination);
     osc.start(now);
     osc.stop(now + seconds);
+  }
+
+  spawnDrone(x, y, degrees) {
+    const c = COIN_DASH;
+    // New drones appear across the arena from the player, never on top of them.
+    if (x === undefined) x = this.player.x < c.width / 2 ? c.width - 40 : 40;
+    if (y === undefined) y = this.player.y < (44 + c.height) / 2 ? c.height - 40 : 84;
+    if (degrees === undefined) degrees = Phaser.Math.Between(0, 359);
+    const drone = this.add.rectangle(x, y, 26, 26, c.colors.drone);
+    this.drones.add(drone);
+    drone.body.setCollideWorldBounds(true).setBounce(1, 1);
+    const angle = degrees * Math.PI / 180;
+    const speed = typeof this.currentDroneSpeed === 'function'
+      ? this.currentDroneSpeed() : c.droneSpeed;
+    const activeSpeed = this.power?.kind === 'slow' ? speed * c.powerUps.slowFactor : speed;
+    drone.body.setVelocity(Math.cos(angle) * activeSpeed, Math.sin(angle) * activeSpeed);
   }
 
   placeCoin() {
