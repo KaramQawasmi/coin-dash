@@ -33,12 +33,88 @@ class CoinDash extends Phaser.Scene {
       this.score++;
       this.placeCoin();
     });
-    this.physics.add.overlap(this.player, this.drones, () => this.finish('A drone caught you!'));
+    this.physics.add.overlap(this.player, this.drones, () => {
+      if (this.power?.kind !== 'shield') this.finish('A drone caught you!');
+    });
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keys = this.input.keyboard.addKeys('W,A,S,D,R');
     this.input.keyboard.on('keydown-R', () => this.scene.restart());
     this.input.keyboard.on('keydown-P', () => this.togglePause());
     this.input.keyboard.on('keydown-ESC', () => this.togglePause());
+    this.setupPowerUps();
+  }
+
+  // --- Power-ups: all timing uses this.time, so it freezes whenever the scene clock is paused.
+  setupPowerUps() {
+    const p = COIN_DASH.powerUps;
+    this.power = null; // active power-up: { kind, timer }
+    this.pickupTimer = null; // the scene instance survives restarts, so drop the old clock's timer
+    this.powerHud = this.add.text(COIN_DASH.width - 18, 12, '', { font: '18px monospace' }).setOrigin(1, 0);
+    this.pickup = this.add.star(0, 0, 5, 7, 15, p.colors.shield).setVisible(false);
+    this.physics.add.existing(this.pickup);
+    this.pickup.body.enable = false;
+    this.physics.add.overlap(this.player, this.pickup, () => this.collectPowerUp());
+    this.spawnTimer = this.time.addEvent({ delay: p.spawnEvery, loop: true, callback: this.spawnPowerUp, callbackScope: this });
+  }
+
+  spawnPowerUp() {
+    if (this.finished || this.pickup.visible) return;
+    const c = COIN_DASH;
+    let x, y;
+    do {
+      x = Phaser.Math.Between(25, c.width - 25);
+      y = Phaser.Math.Between(70, c.height - 25);
+    } while (Phaser.Math.Distance.Between(x, y, this.player.x, this.player.y) < 80);
+    this.pickupKind = Phaser.Math.RND.pick(['shield', 'slow']);
+    this.pickup.setPosition(x, y).setFillStyle(c.powerUps.colors[this.pickupKind]).setVisible(true);
+    this.pickup.body.reset(x, y);
+    this.pickup.body.enable = true;
+    this.pickupTimer = this.time.delayedCall(c.powerUps.lifetime, this.hidePickup, [], this);
+  }
+
+  hidePickup() {
+    this.pickupTimer?.remove();
+    this.pickup.setVisible(false);
+    this.pickup.body.enable = false;
+  }
+
+  collectPowerUp() {
+    if (this.finished || !this.pickup.visible) return;
+    const p = COIN_DASH.powerUps, kind = this.pickupKind;
+    this.hidePickup();
+    this.endPower(); // a new pickup replaces any power-up that is still running
+    const seconds = kind === 'shield' ? p.shieldSeconds : p.slowSeconds;
+    this.power = { kind, timer: this.time.delayedCall(seconds * 1000, this.endPower, [], this) };
+    if (kind === 'shield') this.player.setStrokeStyle(4, p.colors.shield);
+    else this.setDroneSpeed(COIN_DASH.droneSpeed * p.slowFactor);
+  }
+
+  endPower() {
+    if (!this.power) return;
+    this.power.timer.remove();
+    if (this.power.kind === 'shield') this.player.setStrokeStyle();
+    else this.setDroneSpeed(COIN_DASH.droneSpeed);
+    this.power = null;
+  }
+
+  // Rescale each drone's velocity, keeping its current direction.
+  setDroneSpeed(speed) {
+    this.drones.getChildren().forEach(drone => drone.body.velocity.setLength(speed));
+  }
+
+  updatePowerHud() {
+    if (!this.power) return this.powerHud.setText('');
+    const color = COIN_DASH.powerUps.colors[this.power.kind];
+    const label = this.power.kind === 'shield' ? 'Shield' : 'Slow drones';
+    this.powerHud.setColor('#' + color.toString(16).padStart(6, '0'))
+      .setText(`${label}: ${Math.ceil(this.power.timer.getRemainingSeconds())}s`);
+  }
+
+  stopPowerUps() {
+    this.spawnTimer.remove();
+    this.hidePickup();
+    this.endPower();
+    this.powerHud.setText('');
   }
 
   placeCoin() {
@@ -84,6 +160,7 @@ class CoinDash extends Phaser.Scene {
     this.player.body.setVelocity(direction.x, direction.y);
     const seconds = Math.max(0, Math.ceil((this.deadline - this.time.now) / 1000));
     this.hud.setText(`Coins: ${this.score}                       Time: ${seconds}s`);
+    this.updatePowerHud();
     if (seconds === 0) this.finish('Time is up!');
   }
 
@@ -91,6 +168,7 @@ class CoinDash extends Phaser.Scene {
     if (this.finished) return;
     this.finished = true;
     this.physics.pause();
+    this.stopPowerUps();
     const c = COIN_DASH;
     this.add.rectangle(c.width / 2, c.height / 2, 460, 150, 0x0a1120, 0.95);
     this.add.text(c.width / 2, c.height / 2,

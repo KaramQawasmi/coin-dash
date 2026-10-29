@@ -3,6 +3,10 @@
 Collect coins, avoid drones, and survive a 45-second round. Move with arrow keys or WASD;
 press P (or Esc) to pause and R to restart. This is deliberately small so you can add features during the lab.
 
+Now and then a star power-up appears for a few seconds: a blue star gives a short shield
+against drones, and a purple star slows the drones to half speed. The HUD shows the active
+power-up and its remaining seconds. Tuning lives under `powerUps` in `settings.js`.
+
 **Play it here:** https://www.avivz.net/coin-dash/
 
 ## Run it locally
@@ -36,7 +40,7 @@ laptops' JSON files together and save the combined HTML. Use the same time windo
 - `.gitignore`: keeps generated reports out of Git.
 - `index.html`: page and script loading.
 - `style.css`: page appearance.
-- `settings.js`: round duration, speeds, colours and dimensions.
+- `settings.js`: round duration, speeds, colours, dimensions and power-up tuning.
 - `game.js`: scene, input, collisions, score and end-of-round behaviour.
 - `vendor/phaser-3.90.0.min.js`: the pinned Phaser runtime, byte for byte the file published at
   `https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js`; `vendor/LICENSE.phaser.txt` is its MIT licence.
