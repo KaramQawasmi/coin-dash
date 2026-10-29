@@ -10,7 +10,7 @@ class CoinDash extends Phaser.Scene {
     this.time.paused = false;
     this.deadline = this.time.now + c.roundSeconds * 1000;
     this.physics.world.setBounds(0, 44, c.width, c.height - 44);
-    this.add.grid(c.width / 2, c.height / 2, c.width, c.height, 40, 40,
+    this.grid = this.add.grid(c.width / 2, c.height / 2, c.width, c.height, 40, 40,
       c.colors.background, 1, 0x24334b, 0.45);
     this.hud = this.add.text(18, 12, '', { font: '18px monospace', color: '#ffffff' });
     this.player = this.add.rectangle(c.width / 2, c.height / 2, 24, 24, c.colors.player);
@@ -45,7 +45,33 @@ class CoinDash extends Phaser.Scene {
     this.input.keyboard.on('keydown-P', () => this.togglePause());
     this.input.keyboard.on('keydown-ESC', () => this.togglePause());
     this.setupPowerUps();
+    this.setupTheme();
   }
+
+  // --- Theme cycle: alternate dark/light on the scene clock, so it freezes on pause and restarts dark.
+  setupTheme() {
+    this.applyTheme('dark');
+    this.themeTimer = this.time.addEvent({ delay: COIN_DASH.themeSeconds * 1000, loop: true,
+      callback: () => this.applyTheme(this.themeName === 'dark' ? 'light' : 'dark') });
+  }
+
+  applyTheme(name) {
+    const t = this.theme = COIN_DASH.themes[name];
+    this.themeName = name;
+    this.cameras.main.setBackgroundColor(t.background);
+    this.grid.setFillStyle(t.background, 1).setOutlineStyle(t.grid, 0.45);
+    this.player.setFillStyle(t.player);
+    this.coin.setFillStyle(t.coin);
+    this.drones.getChildren().forEach(drone => drone.setFillStyle(t.drone));
+    this.hud.setColor(t.text);
+    if (this.pickup.visible) this.pickup.setFillStyle(this.kindColor(this.pickupKind));
+    if (this.power?.kind === 'shield') this.player.setStrokeStyle(4, this.kindColor('shield'));
+    this.updatePowerHud();
+    document.body.classList.toggle('theme-light', name === 'light');
+  }
+
+  // Power-up colour for the current theme (falls back to the powerUps colours).
+  kindColor(kind) { return this.theme?.[kind] ?? COIN_DASH.powerUps.colors[kind]; }
 
   // --- Power-ups: all timing uses this.time, so it freezes whenever the scene clock is paused.
   setupPowerUps() {
@@ -69,7 +95,7 @@ class CoinDash extends Phaser.Scene {
       y = Phaser.Math.Between(70, c.height - 25);
     } while (Phaser.Math.Distance.Between(x, y, this.player.x, this.player.y) < 80);
     this.pickupKind = Phaser.Math.RND.pick(['shield', 'slow']);
-    this.pickup.setPosition(x, y).setFillStyle(c.powerUps.colors[this.pickupKind]).setVisible(true);
+    this.pickup.setPosition(x, y).setFillStyle(this.kindColor(this.pickupKind)).setVisible(true);
     this.pickup.body.reset(x, y);
     this.pickup.body.enable = true;
     this.pickupTimer = this.time.delayedCall(c.powerUps.lifetime, this.hidePickup, [], this);
@@ -88,7 +114,7 @@ class CoinDash extends Phaser.Scene {
     this.endPower(); // a new pickup replaces any power-up that is still running
     const seconds = kind === 'shield' ? p.shieldSeconds : p.slowSeconds;
     this.power = { kind, timer: this.time.delayedCall(seconds * 1000, this.endPower, [], this) };
-    if (kind === 'shield') this.player.setStrokeStyle(4, p.colors.shield);
+    if (kind === 'shield') this.player.setStrokeStyle(4, this.kindColor('shield'));
     else this.setDroneSpeed(COIN_DASH.droneSpeed * p.slowFactor);
   }
 
@@ -107,7 +133,7 @@ class CoinDash extends Phaser.Scene {
 
   updatePowerHud() {
     if (!this.power) return this.powerHud.setText('');
-    const color = COIN_DASH.powerUps.colors[this.power.kind];
+    const color = this.kindColor(this.power.kind);
     const label = this.power.kind === 'shield' ? 'Shield' : 'Slow drones';
     this.powerHud.setColor('#' + color.toString(16).padStart(6, '0'))
       .setText(`${label}: ${Math.ceil(this.power.timer.getRemainingSeconds())}s`);
@@ -159,9 +185,9 @@ class CoinDash extends Phaser.Scene {
       this.physics.pause();
       const c = COIN_DASH;
       this.pauseOverlay = this.add.container(c.width / 2, c.height / 2, [
-        this.add.rectangle(0, 0, 460, 90, 0x0a1120, 0.95),
+        this.add.rectangle(0, 0, 460, 90, this.theme.overlay, 0.95),
         this.add.text(0, 0, 'Paused — press P to resume',
-          { font: '24px monospace', color: '#ffffff' }).setOrigin(0.5)
+          { font: '24px monospace', color: this.theme.text }).setOrigin(0.5)
       ]);
     } else {
       // this.time.now keeps advancing while the clock is paused, so shift the deadline.
@@ -190,11 +216,12 @@ class CoinDash extends Phaser.Scene {
     this.finished = true;
     this.physics.pause();
     this.stopPowerUps();
+    this.themeTimer.remove(); // the theme stays as it was when the round ended
     const c = COIN_DASH;
-    this.add.rectangle(c.width / 2, c.height / 2, 460, 150, 0x0a1120, 0.95);
+    this.add.rectangle(c.width / 2, c.height / 2, 460, 150, this.theme.overlay, 0.95);
     this.add.text(c.width / 2, c.height / 2,
       `${reason}\n${this.score} coins collected\nPress R to try again`,
-      { font: '24px monospace', color: '#ffffff', align: 'center', lineSpacing: 12 }
+      { font: '24px monospace', color: this.theme.text, align: 'center', lineSpacing: 12 }
     ).setOrigin(0.5);
   }
 }

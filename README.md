@@ -7,6 +7,10 @@ Now and then a star power-up appears for a few seconds: a blue star gives a shor
 against drones, and a purple star slows the drones to half speed. The HUD shows the active
 power-up and its remaining seconds. Tuning lives under `powerUps` in `settings.js`.
 
+Every 5 seconds the game switches between a dark and a light theme (arena, sprites, HUD, overlays
+and the page around it). Each round starts dark; the cycle freezes while paused and stops on the
+end screen. The interval (`themeSeconds`) and both palettes (`themes`) live in `settings.js`.
+
 **Play it here:** https://karamqawasmi.github.io/coin-dash/ (our team's version, updated whenever `main` is pushed)
 
 ## Run it locally
@@ -40,7 +44,7 @@ laptops' JSON files together and save the combined HTML. Use the same time windo
 - `.gitignore`: keeps generated reports out of Git.
 - `index.html`: page and script loading.
 - `style.css`: page appearance.
-- `settings.js`: round duration, speeds, colours, dimensions and power-up tuning.
+- `settings.js`: round duration, speeds, colours, theme palettes, dimensions and power-up tuning.
 - `game.js`: scene, input, collisions, score and end-of-round behaviour.
 - `vendor/phaser-3.90.0.min.js`: the pinned Phaser runtime, byte for byte the file published at
   `https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js`; `vendor/LICENSE.phaser.txt` is its MIT licence.
