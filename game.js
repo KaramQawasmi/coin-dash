@@ -31,10 +31,13 @@ class CoinDash extends Phaser.Scene {
     this.physics.add.overlap(this.player, this.coin, () => {
       if (this.finished) return;
       this.score++;
+      this.playTone(988, 1976, 0.15, 'square');
       this.placeCoin();
     });
     this.physics.add.overlap(this.player, this.drones, () => {
-      if (this.power?.kind !== 'shield') this.finish('A drone caught you!');
+      if (this.finished || this.power?.kind === 'shield') return;
+      this.playTone(440, 55, 0.6, 'sawtooth');
+      this.finish('A drone caught you!');
     });
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keys = this.input.keyboard.addKeys('W,A,S,D,R');
@@ -115,6 +118,24 @@ class CoinDash extends Phaser.Scene {
     this.hidePickup();
     this.endPower();
     this.powerHud.setText('');
+  }
+
+  // Synthesize a short sliding tone, so the game still needs no audio files.
+  playTone(fromHz, toHz, seconds, wave) {
+    const ctx = this.sound.context;
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume();
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = wave;
+    osc.frequency.setValueAtTime(fromHz, now);
+    osc.frequency.exponentialRampToValueAtTime(toHz, now + seconds);
+    gain.gain.setValueAtTime(0.2, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + seconds);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + seconds);
   }
 
   placeCoin() {
