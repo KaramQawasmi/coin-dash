@@ -35,6 +35,8 @@ class CoinDash extends Phaser.Scene {
     this.physics.add.overlap(this.player, this.drones, () => {
       if (this.finished) return;
       this.playTone(440, 55, 0.6, 'sawtooth');
+      this.cameras.main.flash(300, 255, 40, 40);
+      this.cameras.main.shake(350, 0.01);
       this.finish('A drone caught you!');
     });
     this.cursors = this.input.keyboard.createCursorKeys();
