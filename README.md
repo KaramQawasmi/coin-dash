@@ -7,7 +7,7 @@ Now and then a star power-up appears for a few seconds: a blue star gives a shor
 against drones, and a purple star slows the drones to half speed. The HUD shows the active
 power-up and its remaining seconds. Tuning lives under `powerUps` in `settings.js`.
 
-**Play it here:** https://www.avivz.net/coin-dash/
+**Play it here:** https://karamqawasmi.github.io/coin-dash/ (our team's version, updated whenever `main` is pushed)
 
 ## Run it locally
 
